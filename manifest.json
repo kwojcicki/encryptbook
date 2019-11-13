@@ -1,0 +1,25 @@
+{
+  "name": "Mangowaffles Highlighter",
+  "version": "1.0",
+  "description": "An awesome tool to highlight your selections and create email based reminders",
+  "permissions": [
+    "activeTab",
+    "declarativeContent",
+    "storage",
+    "tabs",
+    "identity",
+    "identity.email",
+    "http://*/*",
+    "https://*/*",
+    "https://www.google.com/*",
+    "http://www.google.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "run_at": "document_idle",
+      "js": ["jsencrypt.min.js", "jquery.js", "contentScript.js"]
+    }
+  ],
+  "manifest_version": 2
+}
