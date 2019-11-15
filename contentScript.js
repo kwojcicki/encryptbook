@@ -1,21 +1,40 @@
 const key = new JSEncrypt({ default_key_size: 2056 });
 
-$(document).keypress(function(e) {
-  console.log(e);
-  console.log(e.target);
-  console.log("asd: " + e.which);
-});
+
+  // Save it using the Chrome extension storage API.
+  // chrome.storage.sync.set({ foo: "hello", bar: "hi" }, function() {
+  //   console.log("Settings saved");
+  // });
+
+  // Read it using the storage API
+  //chrome.storage.sync.get(["foo", "bar"], function(items) {
+    //message("Settings retrieved", items);
+ // });
+
+ chrome.storage.sync.get(function(result){console.log(result)})
 
 console.log(key.getPrivateKey());
 console.log(key.getPublicKey());
 
 console.log(key);
 
-function decrypt(text) {
-  return "ooga booga";
+function decrypt(text, cb) {
+  const fbURL = location.href.split("/");
+  console.log("Getting key for: " + fbURL[fbURL.length])
+  chrome.storage.sync.get([fbURL[fbURL.length]] + "-pr", function(item){
+    console.log(item)
+    cb(item);
+  })
 }
 
-function encrypt(text) {}
+function encrypt(text) {
+  const fbURL = location.href.split("/");
+  console.log("Getting key for: " + fbURL[fbURL.length])
+  chrome.storage.sync.get([fbURL[fbURL.length]] + "-pr", function(item){
+    console.log(item)
+    cb(item);
+  })
+}
 
 setTimeout(function() {
   function mutationHandler(mutationRecords) {
@@ -66,72 +85,155 @@ setTimeout(function() {
   });
 
   $("._3oh-._58nk").each(function(index, node) {
-    const href = location.href;
     $(node).text(decrypt($(node).text()));
   });
 
   // should only be 1
-  $("div._5rpb").each(function(index, node) {
-    console.log(
-      $(node)
-        .children()
-        .first()
-    );
-    $(node)
-      .children()
-      .first()
-      .keypress(function(e) {
-        var key = e.which;
-        console.log("blah: " + key);
-        if (key == 13) {
-          // the enter key code
-          //$('input[name = butAssignProd]').click();
-          //return false;
-          //$(node).children().first().text = "testing ooga booga\n"
-        }
-      });
+  // $("div._5rpb").each(function(index, node) {
+  //   console.log(
+  //     $(node)
+  //       .children()
+  //       .first()
+  //   );
+  //   $(node)
+  //     .children()
+  //     .first()
+  //     .keypress(function(e) {
+  //       var key = e.which;
+  //       console.log("blah: " + key);
+  //       if (key == 13) {
+  //         // the enter key code
+  //         //$('input[name = butAssignProd]').click();
+  //         //return false;
+  //         //$(node).children().first().text = "testing ooga booga\n"
+  //       }
+  //     });
+  // });
+
+  // function asd(k) {
+  //   var oEvent = new KeyboardEvent("keypress", { key: "a" });
+
+  //   // Chromium Hack
+  //   Object.defineProperty(oEvent, "keyCode", {
+  //     get: function() {
+  //       return this.keyCodeVal;
+  //     }
+  //   });
+  //   Object.defineProperty(oEvent, "which", {
+  //     get: function() {
+  //       return this.keyCodeVal;
+  //     }
+  //   });
+
+  //   oEvent.keyCodeVal = k;
+
+  //   if (oEvent.keyCode !== k) {
+  //     alert("keyCode mismatch " + oEvent.keyCode + "(" + oEvent.which + ")");
+  //   }
+
+  //   console.log(oEvent);
+  //   document.querySelector("._5rpb > div").dispatchEvent(oEvent);
+  // }
+  // setTimeout(function() {
+  //   console.log("sending");
+  //   var e = $.Event("keypress", { which: 100 });
+  //   $("div._5rpb > div").trigger(e);
+  //   e = $.Event("keypress", { which: 13 });
+  //   $("div._5rpb > div").trigger(e);
+  //   document.querySelector("._5rpb > div").dispatchEvent(new KeyboardEvent('keypress',{'key':'a'}));
+  //   asd(100)
+  // }, 5000);
+
+  // initalize to <br data-text="true">
+  //$("._1p1t._1p1u").remove(); cant remove causes react bugs
+  $("._1p1t._1p1u").css({ display: "none" });
+  const old = $("div._5rpb > div");
+  const clonet = old.clone();
+  const cloneBackup = old.clone();
+  old.css({ display: "none" });
+
+  clonet.keypress(function(event) {
+    if (event.which === 13) {
+      console.log("Enter");
+      console.log($("[aria-label='Send']"));
+      //$("[aria-label='Send']").click();
+      // TODO: swap with actual span inside
+
+      // force send button to appear
+      console.log("text to send: " + clonet.text());
+      var textToSend = clonet.text();
+      textToSend = encrypt(text);
+
+      // for (var i = 0; i < clonet.text().length; i++) {
+      //   if(clonet.text().charAt(i) === " "){
+      //     document.querySelector("._5rpb > div").dispatchEvent(
+      //       new InputEvent("textInput", {
+      //         data: " ",
+      //         bubbles: true
+      //       })
+      //     );
+      //   } else {
+          document.querySelector("._5rpb > div").dispatchEvent(
+            new InputEvent("textInput", {
+              data: textToSend,
+              bubbles: true
+            }))
+      //     );
+      //   }
+      // }
+
+
+
+      // last character lags a bit
+      setTimeout(function() {
+        //document.querySelector(
+        //        "div._5rpb > div > div > div > div > span"
+        //).innerHTML = clonet.find("span").get(0).innerHTML;
+
+        console.log($("[aria-label='Send']").get());
+        console.log($("[aria-label='Send']").get(0));
+
+        $("[aria-label='Send']")
+          .get(0)
+          .click();
+
+        //$("div._5rpb").append(cloneBackup);
+        //clonet.remove();
+        $("._1p1t._1p1u").css({ display: "none" });
+        clonet.empty();
+        clonet.focus();
+        clonet.click();
+
+        setTimeout(function() {
+          clonet.focus();
+          clonet.get(0).focus();
+
+          var p = clonet.get(0),
+            s = window.getSelection(),
+            r = document.createRange();
+          p.innerHTML = "\u00a0";
+          r.selectNodeContents(p);
+          s.removeAllRanges();
+          s.addRange(r);
+          document.execCommand("delete", false, null);
+        }, 0);
+      }, 500);
+    }
   });
 
-  function asd(k) {
-    var oEvent = new KeyboardEvent('keypress',{'key':'a'});
+  clonet.keydown(function(event) {
+    console.log("In here: " + event.key);
+    console.log(event);
+    // document
+    //   .querySelector("._5rpb > div")
+    //   .dispatchEvent(
+    //     new InputEvent("textInput", { data: event.key, bubbles: true })
+    //   );
+  });
 
-    // Chromium Hack
-    Object.defineProperty(oEvent, 'keyCode', {
-                get : function() {
-                    return this.keyCodeVal;
-                }
-    });     
-    Object.defineProperty(oEvent, 'which', {
-                get : function() {
-                    return this.keyCodeVal;
-                }
-    });     
+  $("div._5rpb").append(clonet);
+  clonet.focus();
 
-    oEvent.keyCodeVal = k;
-
-    if (oEvent.keyCode !== k) {
-        alert("keyCode mismatch " + oEvent.keyCode + "(" + oEvent.which + ")");
-    }
-
-    console.log(oEvent)
-    document.querySelector("._5rpb > div").dispatchEvent(oEvent);
-}
-  setTimeout(function() {
-    console.log("sending");
-    var e = $.Event("keypress", { which: 100 });
-    $("div._5rpb > div").trigger(e);
-    e = $.Event("keypress", { which: 13 });
-    $("div._5rpb > div").trigger(e);
-    document.querySelector("._5rpb > div").dispatchEvent(new KeyboardEvent('keypress',{'key':'a'}));
-    asd(100)
-  }, 5000);
-  
-
-  $("div._5rpb > div")
-  const clonet = $("div._5rpb > div").clone()
-  
-  $("div._5rpb").append(clonet)
-  
   // recreate input field
   // element.dispatchEvent(new InputEvent('textInput', {data: keyChar, bubbles: true}));
   // click send
@@ -145,40 +247,31 @@ setTimeout(function() {
   //    $("div._5rpb").children().first().text("test oga boga")
   //}, 5000)
 
-  console.log(
-    $._data(
-      $("div._5rpb")
-        .children()
-        .first()
-        .get(),
-      "events"
-    )
-  );
-  console.log($._data($("div._1mf._1mj").get(), "events"));
-  console.log($._data(document, "events"));
-  console.log(
-    $._data(
-      $("div._5rpb")
-        .children()
-        .first(),
-      "events"
-    )
-  );
+  // console.log(
+  //   $._data(
+  //     $("div._5rpb")
+  //       .children()
+  //       .first()
+  //       .get(),
+  //     "events"
+  //   )
+  // );
+  // console.log($._data($("div._1mf._1mj").get(), "events"));
+  // console.log($._data(document, "events"));
+  // console.log(
+  //   $._data(
+  //     $("div._5rpb")
+  //       .children()
+  //       .first(),
+  //     "events"
+  //   )
+  // );
 
-  $.each($._data(document, "events"), function(i, event) {
-    console.log(i);
-    $.each(event, function(j, h) {
-      console.log("- " + h.handler);
-    });
-  });
+  // $.each($._data(document, "events"), function(i, event) {
+  //   console.log(i);
+  //   $.each(event, function(j, h) {
+  //     console.log("- " + h.handler);
+  //   });
+  // });
 
-  // Save it using the Chrome extension storage API.
-  chrome.storage.sync.set({ foo: "hello", bar: "hi" }, function() {
-    console.log("Settings saved");
-  });
-
-  // Read it using the storage API
-  chrome.storage.sync.get(["foo", "bar"], function(items) {
-    //message("Settings retrieved", items);
-  });
 }, 5000);
