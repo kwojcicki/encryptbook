@@ -1,5 +1,5 @@
-const key = new JSEncrypt({ log: 10, default_key_size: 2056 });
-const key1 = new JSEncrypt({ log: 10, default_key_size: 2056 });
+const key = new JSEncrypt({ default_key_size: 2056 });
+const key1 = new JSEncrypt({ default_key_size: 2056 });
 
 // Save it using the Chrome extension storage API.
 // chrome.storage.sync.set({ foo: "hello", bar: "hi" }, function() {
@@ -12,8 +12,8 @@ const key1 = new JSEncrypt({ log: 10, default_key_size: 2056 });
 // });
 
 chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
-  console.log(message)
-  if(message === "delete"){
+  console.log(message);
+  if (message.type === "delete") {
     chrome.storage.sync.get(function(result) {
       toRemove = [];
       $.each(result, function(index, value) {
@@ -25,12 +25,12 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
         });
       });
     });
-  } else if (message === "deleteNotPk"){
+  } else if (message.type === "deleteNotPk") {
     chrome.storage.sync.get(function(result) {
       toRemove = [];
       $.each(result, function(index, value) {
-        if(!index.endsWith("-pk-yours")){
-          toRemove.push(index); 
+        if (!index.endsWith("-pk-yours")) {
+          toRemove.push(index);
         }
       });
       chrome.storage.sync.remove(toRemove, function(Items) {
@@ -51,116 +51,118 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   sendResponse();
 });
 
-chrome.storage.sync.get(function(result) {
-  console.log(result);
-  rest();
+chrome.storage.local.get("encryptbook-on", function(result) {
+  if (result["encryptbook-on"]) {
+    chrome.storage.sync.get(function(result) {
+      console.log(result);
+      rest();
+    });
+  }
 });
 
 //console.log(key.getPrivateKey());
 //console.log(key.getPublicKey());
 
-  // [fbURL[fbURL.length - 1] + "-pk-yours"] private key yours for decrypting
-  // [fbURL[fbURL.length - 1] + "-pb-yours"] public key yours for encrypting first repeat of message
-  // [fbURL[fbURL.length - 1] + "-pb-theirs"] public key theirs for encrypting second repeat of message
+// [fbURL[fbURL.length - 1] + "-pk-yours"] private key yours for decrypting
+// [fbURL[fbURL.length - 1] + "-pb-yours"] public key yours for encrypting first repeat of message
+// [fbURL[fbURL.length - 1] + "-pb-theirs"] public key theirs for encrypting second repeat of message
 
-  function decrypt(node, cb) {
-    const fbURL = location.href.split("/");
-    console.log("Getting key for: " + fbURL[fbURL.length - 1]);
-    console.log("decrypting");
+function decrypt(node, cb) {
+  const fbURL = location.href.split("/");
+  console.log("Getting key for: " + fbURL[fbURL.length - 1]);
+  console.log("decrypting");
 
+  if (
+    $(node)
+      .text()
+      .includes("Here's your Encryptbook")
+  ) {
     if (
       $(node)
-        .text()
-        .includes("Here's your Encryptbook")
+        .parent()
+        .parent()
+        .parent()
+        .attr("class")
+        .includes("_3i_m")
     ) {
-      if (
-        $(node)
-          .parent()
-          .parent()
-          .parent()
-          .attr("class")
-          .includes("_3i_m")
-      ) {
-        cb($(node).text());
-      } else {
-        // received public key store it
-        const messageReceived = $(node)
-          .text()
-          .split("public key:");
-        receivePair(messageReceived[messageReceived.length - 1]);
-        cb($(node).text());
-      }
-    } else if (
-      !$(node)
-        .text()
-        .includes("@@@")
-    ) {
-      // unencrypted return original
       cb($(node).text());
     } else {
-      // maybe left/right switched in RTL mode?
-      console.log(
-        $(node)
-          .parent()
-          .parent()
-          .parent()
-          .attr("class")
-      );
-      // ._3i_m == your message, decrypt second portion
-      // ._3i_m != their message, decrypt first portion
-      if (
-        $(node)
-          .parent()
-          .parent()
-          .parent()
-          .attr("class")
-          .includes("_3i_m")
+      // received public key store it
+      const messageReceived = $(node)
+        .text()
+        .split("public key:");
+      receivePair(messageReceived[messageReceived.length - 1]);
+      cb($(node).text());
+    }
+  } else if (
+    !$(node)
+      .text()
+      .includes("@@@")
+  ) {
+    // unencrypted return original
+    cb($(node).text());
+  } else {
+    // maybe left/right switched in RTL mode?
+    console.log(
+      $(node)
+        .parent()
+        .parent()
+        .parent()
+        .attr("class")
+    );
+    // ._3i_m == your message, decrypt second portion
+    // ._3i_m != their message, decrypt first portion
+    if (
+      $(node)
+        .parent()
+        .parent()
+        .parent()
+        .attr("class")
+        .includes("_3i_m")
+    ) {
+      chrome.storage.sync.get([fbURL[fbURL.length - 1] + "-pk-yours"], function(
+        item
       ) {
-        chrome.storage.sync.get(
-          [fbURL[fbURL.length - 1] + "-pk-yours"],
-          function(item) {
-            console.log(item);
-            key.setPrivateKey(item[fbURL[fbURL.length - 1] + "-pk-yours"]);
-            cb(
-              key.decrypt(
-                $(node)
-                  .text()
-                  .split("@@@")[0]
-              )
-            );
-          }
+        console.log(item);
+        key.setPrivateKey(item[fbURL[fbURL.length - 1] + "-pk-yours"]);
+        cb(
+          key.decrypt(
+            $(node)
+              .text()
+              .split("@@@")[0]
+          )
         );
-      } else {
-        chrome.storage.sync.get(
-          [fbURL[fbURL.length - 1] + "-pk-yours"],
-          function(item) {
-            console.log(item);
-            key.setPrivateKey(item[fbURL[fbURL.length - 1] + "-pk-yours"]);
-            console.log(
-              "decrypting with: " + item[fbURL[fbURL.length - 1] + "-pk-yours"]
-            );
-            console.log(
-              key.decrypt(
-                $(node)
-                  .text()
-                  .split("@@@")[1]
-              )
-            );
-            console.log(key);
-            cb(
-              key.decrypt(
-                $(node)
-                  .text()
-                  .split("@@@")[1]
-              )
-            );
-          }
+      });
+    } else {
+      chrome.storage.sync.get([fbURL[fbURL.length - 1] + "-pk-yours"], function(
+        item
+      ) {
+        console.log(item);
+        key.setPrivateKey(item[fbURL[fbURL.length - 1] + "-pk-yours"]);
+        console.log(
+          "decrypting with: " + item[fbURL[fbURL.length - 1] + "-pk-yours"]
         );
-      }
+        console.log(
+          key.decrypt(
+            $(node)
+              .text()
+              .split("@@@")[1]
+          )
+        );
+        console.log(key);
+        cb(
+          key.decrypt(
+            $(node)
+              .text()
+              .split("@@@")[1]
+          )
+        );
+      });
     }
   }
+}
 
-  /**
+/**
  
     them               you
               firsttime(pb-yours)@@@secondtime(pb-theirs)
@@ -169,121 +171,119 @@ chrome.storage.sync.get(function(result) {
 
  */
 
-  function encrypt(text, cb) {
-    const fbURL = location.href.split("/");
-    console.log("Getting key for: " + fbURL[fbURL.length - 1]);
-    chrome.storage.sync.get(
-      [
-        fbURL[fbURL.length - 1] + "-pb-yours",
-        fbURL[fbURL.length - 1] + "-pb-theirs"
-      ],
-      function(item) {
-        console.log(item);
-        console.log(
-          "encrypting with: " + item[fbURL[fbURL.length - 1] + "-pb-theirs"]
+function encrypt(text, cb) {
+  const fbURL = location.href.split("/");
+  console.log("Getting key for: " + fbURL[fbURL.length - 1]);
+  chrome.storage.sync.get(
+    [
+      fbURL[fbURL.length - 1] + "-pb-yours",
+      fbURL[fbURL.length - 1] + "-pb-theirs"
+    ],
+    function(item) {
+      console.log(item);
+      console.log(
+        "encrypting with: " + item[fbURL[fbURL.length - 1] + "-pb-theirs"]
+      );
+      key.setPublicKey(item[fbURL[fbURL.length - 1] + "-pb-yours"]);
+      key1.setPublicKey(item[fbURL[fbURL.length - 1] + "-pb-theirs"]);
+      if (!item.hasOwnProperty(fbURL[fbURL.length - 1] + "-pb-theirs")) {
+        cb(text);
+      } else {
+        cb(key.encrypt(text) + "@@@" + key1.encrypt(text));
+      }
+    }
+  );
+}
+
+function createPair(cb) {
+  const fbURL = location.href.split("/");
+  console.log("Creating pair for: " + fbURL[fbURL.length - 1]);
+  chrome.storage.sync.get(
+    [
+      fbURL[fbURL.length - 1] + "-pk-yours",
+      fbURL[fbURL.length - 1] + "-pb-yours"
+    ],
+    function(item) {
+      // pair doesn't exist, creating
+      console.log("checking if key exists");
+      console.log(item);
+      if (!item.hasOwnProperty(fbURL[fbURL.length - 1] + "-pk-yours")) {
+        const temp = new JSEncrypt({ default_key_size: 2056 });
+        chrome.storage.sync.set(
+          {
+            [fbURL[fbURL.length - 1] + "-pk-yours"]: temp.getPrivateKey(),
+            [fbURL[fbURL.length - 1] + "-pb-yours"]: temp.getPublicKey()
+          },
+          function() {
+            console.log("Settings saved");
+            console.log(temp);
+            cb(temp.getPublicKey());
+          }
         );
-        key.setPublicKey(item[fbURL[fbURL.length - 1] + "-pb-yours"]);
-        key1.setPublicKey(item[fbURL[fbURL.length - 1] + "-pb-theirs"]);
-        if (!item.hasOwnProperty(fbURL[fbURL.length - 1] + "-pb-theirs")) {
-          cb(text);
-        } else {
-          cb(key.encrypt(text) + "@@@" + key1.encrypt(text));
-        }
+      } else {
+        // TODO: ask if user wants to override existing key
+        cb(item[fbURL[fbURL.length - 1] + "-pb-yours"]);
       }
-    );
-  }
+    }
+  );
+}
 
-  function createPair(cb) {
-    const fbURL = location.href.split("/");
-    console.log("Creating pair for: " + fbURL[fbURL.length - 1]);
-    chrome.storage.sync.get(
-      [
-        fbURL[fbURL.length - 1] + "-pk-yours",
-        fbURL[fbURL.length - 1] + "-pb-yours"
-      ],
-      function(item) {
-        // pair doesn't exist, creating
-        console.log("checking if key exists");
-        console.log(item);
-        if (!item.hasOwnProperty(fbURL[fbURL.length - 1] + "-pk-yours")) {
-          const temp = new JSEncrypt({ default_key_size: 2056 });
-          chrome.storage.sync.set(
-            {
-              [fbURL[fbURL.length - 1] + "-pk-yours"]: temp.getPrivateKey(),
-              [fbURL[fbURL.length - 1] + "-pb-yours"]: temp.getPublicKey()
-            },
-            function() {
-              console.log("Settings saved");
-              console.log(temp);
-              cb(temp.getPublicKey());
-            }
-          );
-        } else {
-          // TODO: ask if user wants to override existing key
-          cb(item[fbURL[fbURL.length - 1] + "-pb-yours"]);
-        }
-      }
-    );
-  }
+function receivePair(key) {
+  const fbURL = location.href.split("/");
+  console.log("Setting public key for: " + fbURL[fbURL.length - 1] + " " + key);
+  chrome.storage.sync.set(
+    { [fbURL[fbURL.length - 1] + "-pb-theirs"]: key },
+    function() {
+      console.log("Settings saved");
+    }
+  );
+}
 
-  function receivePair(key) {
-    const fbURL = location.href.split("/");
-    console.log(
-      "Setting public key for: " + fbURL[fbURL.length - 1] + " " + key
-    );
-    chrome.storage.sync.set(
-      { [fbURL[fbURL.length - 1] + "-pb-theirs"]: key },
-      function() {
-        console.log("Settings saved");
-      }
-    );
-  }
+function sendText(textToSend, clonet) {
+  document.querySelector("._5rpb > div").dispatchEvent(
+    new InputEvent("textInput", {
+      data: textToSend,
+      bubbles: true
+    })
+  );
 
-  function sendText(textToSend, clonet) {
-    document.querySelector("._5rpb > div").dispatchEvent(
-      new InputEvent("textInput", {
-        data: textToSend,
-        bubbles: true
-      })
-    );
+  // last character lags a bit
+  setTimeout(function() {
+    //document.querySelector(
+    //        "div._5rpb > div > div > div > div > span"
+    //).innerHTML = clonet.find("span").get(0).innerHTML;
 
-    // last character lags a bit
-    setTimeout(function() {
-      //document.querySelector(
-      //        "div._5rpb > div > div > div > div > span"
-      //).innerHTML = clonet.find("span").get(0).innerHTML;
+    console.log($("[aria-label='Send']").get());
+    console.log($("[aria-label='Send']").get(0));
 
-      console.log($("[aria-label='Send']").get());
-      console.log($("[aria-label='Send']").get(0));
+    $("[aria-label='Send']")
+      .get(0)
+      .click();
 
-      $("[aria-label='Send']")
-        .get(0)
-        .click();
+    //$("div._5rpb").append(cloneBackup);
+    //clonet.remove();
+    $("._1p1t._1p1u").css({ display: "none" });
+    if (clonet != null) {
+      clonet.empty();
+      clonet.focus();
+      clonet.click();
 
-      //$("div._5rpb").append(cloneBackup);
-      //clonet.remove();
-      $("._1p1t._1p1u").css({ display: "none" });
-      if (clonet != null) {
-        clonet.empty();
+      setTimeout(function() {
         clonet.focus();
-        clonet.click();
+        clonet.get(0).focus();
 
-        setTimeout(function() {
-          clonet.focus();
-          clonet.get(0).focus();
-
-          var p = clonet.get(0),
-            s = window.getSelection(),
-            r = document.createRange();
-          p.innerHTML = "\u00a0";
-          r.selectNodeContents(p);
-          s.removeAllRanges();
-          s.addRange(r);
-          document.execCommand("delete", false, null);
-        }, 0);
-      }
-    }, 500);
-  }
+        var p = clonet.get(0),
+          s = window.getSelection(),
+          r = document.createRange();
+        p.innerHTML = "\u00a0";
+        r.selectNodeContents(p);
+        s.removeAllRanges();
+        s.addRange(r);
+        document.execCommand("delete", false, null);
+      }, 0);
+    }
+  }, 500);
+}
 
 function rest() {
   console.log(key);
