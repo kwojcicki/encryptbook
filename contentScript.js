@@ -1,17 +1,25 @@
 const key = new JSEncrypt({ default_key_size: 2056 });
 
+// Save it using the Chrome extension storage API.
+// chrome.storage.sync.set({ foo: "hello", bar: "hi" }, function() {
+//   console.log("Settings saved");
+// });
 
-  // Save it using the Chrome extension storage API.
-  // chrome.storage.sync.set({ foo: "hello", bar: "hi" }, function() {
-  //   console.log("Settings saved");
-  // });
+// Read it using the storage API
+//chrome.storage.sync.get(["foo", "bar"], function(items) {
+//message("Settings retrieved", items);
+// });
 
-  // Read it using the storage API
-  //chrome.storage.sync.get(["foo", "bar"], function(items) {
-    //message("Settings retrieved", items);
- // });
+chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+  createPair(function(key) {
+    sendText("Heres a cool public key: " + key, null)
+  });
+  sendResponse();
+});
 
- chrome.storage.sync.get(function(result){console.log(result)})
+chrome.storage.sync.get(function(result) {
+  console.log(result);
+});
 
 console.log(key.getPrivateKey());
 console.log(key.getPublicKey());
@@ -20,20 +28,104 @@ console.log(key);
 
 function decrypt(text, cb) {
   const fbURL = location.href.split("/");
-  console.log("Getting key for: " + fbURL[fbURL.length])
-  chrome.storage.sync.get([fbURL[fbURL.length]] + "-pr", function(item){
-    console.log(item)
-    cb(item);
-  })
+  console.log("Getting key for: " + fbURL[fbURL.length - 1]);
+  chrome.storage.sync.get([fbURL[fbURL.length - 1] + "-pk"], function(item) {
+    console.log(item);
+    key.setPrivateKey(item);
+    cb(key.decrypt(text));
+  });
 }
 
-function encrypt(text) {
+function encrypt(text, cb) {
   const fbURL = location.href.split("/");
-  console.log("Getting key for: " + fbURL[fbURL.length])
-  chrome.storage.sync.get([fbURL[fbURL.length]] + "-pr", function(item){
-    console.log(item)
-    cb(item);
-  })
+  console.log("Getting key for: " + fbURL[fbURL.length - 1]);
+  chrome.storage.sync.get([fbURL[fbURL.length - 1] + "-pb"], function(item) {
+    console.log(item);
+    key.setPublicKey(item);
+    cb(key.encrypt(text));
+  });
+}
+
+function createPair(cb) {
+  const fbURL = location.href.split("/");
+  console.log("Getting key for: " + fbURL[fbURL.length - 1]);
+  chrome.storage.sync.get([fbURL[fbURL.length - 1] + "-pk"], function(item) {
+    // pair doesn't exist, creating
+    if (item === null) {
+      const temp = new JSEncrypt({ default_key_size: 2056 });
+      chrome.storage.sync.set(
+        { [fbURL[fbURL.length - 1] + "-pk"]: temp.getPrivateKey() },
+        function() {
+          console.log("Settings saved");
+          cb(temp.getPublicKey());
+        }
+      );
+    } else {
+      // ask if user wants to override existing key
+      cb(null);
+    }
+  });
+}
+
+function receivePair(key) {
+  const fbURL = location.href.split("/");
+  console.log("Getting key for: " + fbURL[fbURL.length - 1]);
+  chrome.storage.sync.set(
+    { [fbURL[fbURL.length - 1] + "-pb"]: key },
+    function() {
+      console.log("Settings saved");
+    }
+  );
+}
+
+function sendText(textToSend, clonet) {
+  document.querySelector("._5rpb > div").dispatchEvent(
+    new InputEvent("textInput", {
+      data: textToSend,
+      bubbles: true
+    })
+  );
+  //     );
+  //   }
+  // }
+
+  // last character lags a bit
+  setTimeout(function() {
+    //document.querySelector(
+    //        "div._5rpb > div > div > div > div > span"
+    //).innerHTML = clonet.find("span").get(0).innerHTML;
+
+    console.log($("[aria-label='Send']").get());
+    console.log($("[aria-label='Send']").get(0));
+
+    $("[aria-label='Send']")
+      .get(0)
+      .click();
+
+    //$("div._5rpb").append(cloneBackup);
+    //clonet.remove();
+    $("._1p1t._1p1u").css({ display: "none" });
+    if (clonet != null) {
+      clonet.empty();
+      clonet.focus();
+      clonet.click();
+
+      setTimeout(function() {
+        clonet.focus();
+        clonet.get(0).focus();
+
+        var p = clonet.get(0),
+          s = window.getSelection(),
+          r = document.createRange();
+        p.innerHTML = "\u00a0";
+        r.selectNodeContents(p);
+        s.removeAllRanges();
+        s.addRange(r);
+        document.execCommand("delete", false, null);
+      }, 0);
+      F;
+    }
+  }, 500);
 }
 
 setTimeout(function() {
@@ -44,7 +136,6 @@ setTimeout(function() {
       //console.log(mutation.type);
 
       //console.log(mutation)
-
       mutation.addedNodes.forEach(function(node) {
         //console.log($(node).find("._3oh-._58nk"))
         if ($(node).find("._3oh-._58nk").length > 0) {
@@ -85,7 +176,9 @@ setTimeout(function() {
   });
 
   $("._3oh-._58nk").each(function(index, node) {
-    $(node).text(decrypt($(node).text()));
+    decrypt($(node).text(), function(text) {
+      $(node).text(text);
+    });
   });
 
   // should only be 1
@@ -162,7 +255,9 @@ setTimeout(function() {
       // force send button to appear
       console.log("text to send: " + clonet.text());
       var textToSend = clonet.text();
-      textToSend = encrypt(text);
+      encrypt(text, function(textToSend) {
+        sendText(textToSend, clonet);
+      });
 
       // for (var i = 0; i < clonet.text().length; i++) {
       //   if(clonet.text().charAt(i) === " "){
@@ -173,51 +268,6 @@ setTimeout(function() {
       //       })
       //     );
       //   } else {
-          document.querySelector("._5rpb > div").dispatchEvent(
-            new InputEvent("textInput", {
-              data: textToSend,
-              bubbles: true
-            }))
-      //     );
-      //   }
-      // }
-
-
-
-      // last character lags a bit
-      setTimeout(function() {
-        //document.querySelector(
-        //        "div._5rpb > div > div > div > div > span"
-        //).innerHTML = clonet.find("span").get(0).innerHTML;
-
-        console.log($("[aria-label='Send']").get());
-        console.log($("[aria-label='Send']").get(0));
-
-        $("[aria-label='Send']")
-          .get(0)
-          .click();
-
-        //$("div._5rpb").append(cloneBackup);
-        //clonet.remove();
-        $("._1p1t._1p1u").css({ display: "none" });
-        clonet.empty();
-        clonet.focus();
-        clonet.click();
-
-        setTimeout(function() {
-          clonet.focus();
-          clonet.get(0).focus();
-
-          var p = clonet.get(0),
-            s = window.getSelection(),
-            r = document.createRange();
-          p.innerHTML = "\u00a0";
-          r.selectNodeContents(p);
-          s.removeAllRanges();
-          s.addRange(r);
-          document.execCommand("delete", false, null);
-        }, 0);
-      }, 500);
     }
   });
 
@@ -273,5 +323,4 @@ setTimeout(function() {
   //     console.log("- " + h.handler);
   //   });
   // });
-
 }, 5000);

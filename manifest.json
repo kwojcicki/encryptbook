@@ -1,7 +1,7 @@
 {
   "name": "Encryptbook",
   "version": "1.0",
-  "description": "An awesome tool to highlight your selections and create email based reminders",
+  "description": "Tool to encrypt your messages from Facebook and Hackers",
   "permissions": [
     "activeTab",
     "declarativeContent",
@@ -21,5 +21,8 @@
       "js": ["jsencrypt.min.js", "jquery.js", "contentScript.js"]
     }
   ],
+  "browser_action": {
+    "default_popup": "popup.html"
+  },
   "manifest_version": 2
 }
