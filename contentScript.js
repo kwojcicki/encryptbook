@@ -51,12 +51,15 @@ function createPair(cb) {
   console.log("Getting key for: " + fbURL[fbURL.length - 1]);
   chrome.storage.sync.get([fbURL[fbURL.length - 1] + "-pk"], function(item) {
     // pair doesn't exist, creating
-    if (item === null) {
+    console.log("checking if key exists")
+    console.log(item)
+    if (!item.hasOwnProperty(fbURL[fbURL.length - 1] + "-pk")) {
       const temp = new JSEncrypt({ default_key_size: 2056 });
       chrome.storage.sync.set(
         { [fbURL[fbURL.length - 1] + "-pk"]: temp.getPrivateKey() },
         function() {
           console.log("Settings saved");
+          console.log(temp)
           cb(temp.getPublicKey());
         }
       );
@@ -130,7 +133,7 @@ function sendText(textToSend, clonet) {
 
 setTimeout(function() {
   function mutationHandler(mutationRecords) {
-    console.info("mutationHandler:");
+    //console.info("mutationHandler:");
 
     mutationRecords.forEach(function(mutation) {
       //console.log(mutation.type);
@@ -139,7 +142,7 @@ setTimeout(function() {
       mutation.addedNodes.forEach(function(node) {
         //console.log($(node).find("._3oh-._58nk"))
         if ($(node).find("._3oh-._58nk").length > 0) {
-          console.log($(node));
+          //console.log($(node));
           $(node)
             .find("._3oh-._58nk")
             .text(decrypt($(node).find("._3oh-._58nk")));
@@ -271,15 +274,15 @@ setTimeout(function() {
     }
   });
 
-  clonet.keydown(function(event) {
-    console.log("In here: " + event.key);
-    console.log(event);
+  //clonet.keydown(function(event) {
+    //console.log("In here: " + event.key);
+//    console.log(event);
     // document
     //   .querySelector("._5rpb > div")
     //   .dispatchEvent(
     //     new InputEvent("textInput", { data: event.key, bubbles: true })
     //   );
-  });
+  //});
 
   $("div._5rpb").append(clonet);
   clonet.focus();
