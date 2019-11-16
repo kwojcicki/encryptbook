@@ -16,7 +16,7 @@
   ],
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
+      "matches": ["http://*.facebook.com/*", "https://*.facebook.com/*"],
       "run_at": "document_idle",
       "js": ["jsencrypt.min.js", "jquery.js", "contentScript.js"]
     }
